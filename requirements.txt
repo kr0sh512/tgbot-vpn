@@ -1,0 +1,5 @@
+pytelegrambotapi
+coloredlogs
+psycopg2-binary
+sshtunnel
+python-dotenv
