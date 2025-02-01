@@ -276,7 +276,7 @@ def admin_info(message: types.Message):
         f.write("Subscriptions:\n")
         for subscription in subscriptions:
             f.write(
-                f"---------\nUser: {subscription['user_id']} {db.get_user(subscription['user_id'])["nickname"]}\
+                f"---------\nUser: {subscription['user_id']} {db.get_user(subscription['user_id'])['nickname']}\
                 \nStart: {subscription['start_date']}\
                 \nEnd: {subscription['end_date']}\
                 \nPrice: {subscription['price']}\n"
