@@ -552,11 +552,18 @@ def got_payment(message: types.Message):
 
         return
 
-    db.new_subscription(
+    sub_id = db.new_subscription(
         message.chat.id,
         datetime.now(),
         end_date,
         message.successful_payment.total_amount / 100,
+    )
+
+    db.new_payments(
+        message.chat.id,
+        message.successful_payment.total_amount / 100,
+        sub_id,
+        message.successful_payment.telegram_payment_charge_id,
     )
 
     bot.send_message(

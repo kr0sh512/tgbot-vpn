@@ -93,6 +93,63 @@ def new_user(
     return
 
 
+"""
+CREATE TABLE IF NOT EXISTS payments (
+    id BIGSERIAL PRIMARY KEY,
+    payment_id VARCHAR(255) NOT NULL,
+    subscription_id BIGINT NOT NULL REFERENCES subscriptions(id),
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def new_payments(
+    user_id: int,
+    amount: float,
+    subscription_id: int,
+    payment_id: int,
+) -> None:
+    conn = db.getconn()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO payments (user_id, amount, subscription_id, payment_id) VALUES (%s, %s, %s, %s)",
+        (user_id, amount, subscription_id, payment_id),
+    )
+    conn.commit()
+    db.putconn(conn)
+
+    return
+
+
+def new_request(user_id: int, request_status: str, request_data: str) -> None:
+    conn = db.getconn()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO requests (user_id, request_status, request_data) VALUES (%s, %s, %s)",
+        (user_id, request_status, request_data),
+    )
+    conn.commit()
+    db.putconn(conn)
+
+    return
+
+
+def new_subscription(user_id: int, start_date: str, end_date: str, price: float) -> int:
+    conn = db.getconn()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO subscriptions (user_id, start_date, end_date, price) VALUES (%s, %s, %s, %s) RETURNING id",
+        (user_id, start_date, end_date, price),
+    )
+    subscription_id = cursor.fetchone()[0]
+    conn.commit()
+    db.putconn(conn)
+
+    return subscription_id
+
+
 def update_user(user_id: int, key: str, value: Any) -> None:
     conn = db.getconn()
     cursor = conn.cursor()
@@ -132,39 +189,11 @@ def update_user(user_id: int, key: str, value: Any) -> None:
     return
 
 
-def new_request(user_id: int, request_status: str, request_data: str) -> None:
-    conn = db.getconn()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO requests (user_id, request_status, request_data) VALUES (%s, %s, %s)",
-        (user_id, request_status, request_data),
-    )
-    conn.commit()
-    db.putconn(conn)
-
-    return
-
-
-def new_subscription(
-    user_id: int, start_date: str, end_date: str, price: float
-) -> None:
-    conn = db.getconn()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO subscriptions (user_id, start_date, end_date, price) VALUES (%s, %s, %s, %s)",
-        (user_id, start_date, end_date, price),
-    )
-    conn.commit()
-    db.putconn(conn)
-
-    return
-
-
 def get_subscription(user_id: int) -> dict:
     conn = db.getconn()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM subscriptions WHERE user_id = %s ORDER BY end_date DESC LIMIT 1",
+        "SELECT * FROM subscriptions WHERE user_id = %s ORDER BY created_at DESC LIMIT 1",
         (user_id,),
     )
     row = cursor.fetchone()
