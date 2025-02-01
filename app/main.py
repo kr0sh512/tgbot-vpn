@@ -269,19 +269,17 @@ def admin_info(message: types.Message):
         f.write("Users:\n")
         for user in users:
             f.write(
-                f"User: {user['firstname']} {user['lastname']} ({user['nickname']})\
-                    \n---------\n"
+                f"---------\nUser: {user['firstname']} {user['lastname']} ({user['nickname']})\n"
             )
 
     with open("temp/subscriptions.txt", "w") as f:
         f.write("Subscriptions:\n")
         for subscription in subscriptions:
             f.write(
-                f"User: {subscription['user_id']}\
+                f"---------\nUser: {subscription['user_id']} {db.get_user(subscription['user_id'])["nickname"]}\
                 \nStart: {subscription['start_date']}\
                 \nEnd: {subscription['end_date']}\
-                \nPrice: {subscription['price']}\
-                \n---------\n"
+                \nPrice: {subscription['price']}\n"
             )
 
     bot.send_document(admin_id, open("temp/users.txt", "rb"))

@@ -93,18 +93,6 @@ def new_user(
     return
 
 
-"""
-CREATE TABLE IF NOT EXISTS payments (
-    id BIGSERIAL PRIMARY KEY,
-    payment_id VARCHAR(255) NOT NULL,
-    subscription_id BIGINT NOT NULL REFERENCES subscriptions(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    amount DECIMAL(10, 2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
-
 def new_payments(
     user_id: int,
     amount: float,
