@@ -29,6 +29,7 @@ lang_dict = {
         "wrong_data_format": "Wrong data format",
         "you_are_approved": "You are approved",
         "you_are_declined": "You are declined",
+        "send_contact": "Send contact to admin",
     },
     "RU": {
         "already_registered": "Вы уже зарегистрированы",
@@ -60,5 +61,6 @@ lang_dict = {
         "wrong_data_format": "Неправильный формат данных",
         "you_are_approved": "Вы одобрены",
         "you_are_declined": "Вы отклонены",
+        "send_contact": "Отправьте контакт администратору",
     },
 }
