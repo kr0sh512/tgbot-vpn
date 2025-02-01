@@ -1,9 +1,10 @@
 #!/usr/bin/python
 import telebot, threading, time, os, json, sys
-import db
+import db as db
 from telebot import types
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from lang import lang_dict
 
 load_dotenv()
 
@@ -16,11 +17,25 @@ admin_id = int(os.environ.get("ADMIN_ID"))
 admin_username = os.environ.get("ADMIN_USERNAME")
 provider_token = os.environ.get("PROVIDER_TOKEN")
 
+# Language dictionary
+
+
+def get_lang(message: types.Message):
+    if message.from_user.language_code == "en":
+        return message.from_user.language_code.upper()
+
+    return "RU"
+
+
+# Function to get the message based on language
+def get_message(key, lang="RU"):
+    return lang_dict[lang].get(key, key)
+
 
 @bot.message_handler(commands=["r", "restart"])
 def restart(message: types.Message):
     if message.chat.id == admin_id:
-        bot.send_message(admin_id, "Restarting...")
+        bot.send_message(admin_id, get_message("restart", get_lang(message)))
 
         os.execv(sys.executable, ["python3", "-u"] + sys.argv)
 
@@ -29,6 +44,8 @@ def restart(message: types.Message):
 
 @bot.message_handler(commands=["start"])
 def start_message(message: types.Message):
+    message.from_user.language_code
+
     if message.chat.id == admin_id:
         admin_info(message)
 
@@ -41,7 +58,7 @@ def start_message(message: types.Message):
     keyboard.add(reg_button)
     bot.send_message(
         message.chat.id,
-        "отправьте контакт",
+        get_message("send_contact", get_lang(message)),
         reply_markup=keyboard,
     )
 
@@ -68,12 +85,16 @@ def help_message(message: types.Message):
 @bot.message_handler(content_types=["contact"])
 def contact(message: types.Message):
     if db.get_user(message.chat.id):
-        bot.send_message(message.chat.id, "You are already registered")
+        bot.send_message(
+            message.chat.id, get_message("already_registered", get_lang(message))
+        )
 
         return
 
     if not message.contact:
-        bot.send_message(message.chat.id, "Empty contact")
+        bot.send_message(
+            message.chat.id, get_message("empty_contact", get_lang(message))
+        )
 
         return
 
@@ -87,7 +108,7 @@ def contact(message: types.Message):
 
     bot.send_message(
         message.chat.id,
-        "You are registered. Now you should wait until admin will approve you",
+        get_message("registered", get_lang(message)),
         reply_markup=types.ReplyKeyboardRemove(),
     )
 
@@ -104,7 +125,7 @@ def send_message(message: types.Message):
         return
 
     bot.send_message(
-        message.chat.id, "Send next message directly to admin. /exit to cancel"
+        message.chat.id, get_message("send_next_message", get_lang(message))
     )
 
     bot.register_next_step_handler_by_chat_id(
@@ -113,7 +134,9 @@ def send_message(message: types.Message):
 
     def send_to_admin(message: types.Message):
         if "/exit" in message.text:
-            bot.send_message(message.chat.id, "Canceled")
+            bot.send_message(
+                message.chat.id, get_message("canceled", get_lang(message))
+            )
 
         user = db.get_user(message.chat.id)
         markup = types.InlineKeyboardMarkup()
@@ -129,7 +152,9 @@ def send_message(message: types.Message):
         )
         bot.forward_message(admin_id, message.chat.id, message.message_id)
 
-        bot.send_message(message.chat.id, "Message sent")
+        bot.send_message(
+            message.chat.id, get_message("message_sent", get_lang(message))
+        )
 
         return
 
@@ -149,7 +174,7 @@ def send_message_from_admin(message: types.Message):
 
     bot.send_message(
         message.chat.id,
-        "Choose user to send message",
+        get_message("choose_user", get_lang(message)),
         reply_markup=markup,
     )
 
@@ -161,7 +186,7 @@ def send_to_user(call: types.CallbackQuery):
     user = db.get_user(call.data.split("_")[1])
     bot.send_message(
         admin_id,
-        "Send message to user {} ({} {})\n/exit to stop".format(
+        get_message("send_message_to_user", get_lang(call.message)).format(
             user["nickname"], user["firstname"], user["lastname"]
         ),
         # reply_markup=types.ForceReply(),
@@ -193,21 +218,31 @@ def info(message: types.Message):
 
     user = db.get_user(message.chat.id)
     if not user:
-        bot.send_message(message.chat.id, "You are not registered")
+        bot.send_message(
+            message.chat.id, get_message("not_registered", get_lang(message))
+        )
 
         return
 
     subscription = db.get_subscription(message.chat.id)
     if not subscription:
-        bot.send_message(message.chat.id, "Wait until admin will approve you")
+        bot.send_message(
+            message.chat.id, get_message("wait_for_approval", get_lang(message))
+        )
 
         return
 
     bot.send_message(
         message.chat.id,
-        f'User: {user["firstname"]}\
-        \nSubscription: {subscription["end_date"].strftime("%Y-%m-%d") if subscription["price"] != 0 else "unlimited"}\
-        \nPrice: {subscription["price"]}',
+        get_message("user_info", get_lang(message)).format(
+            user["firstname"],
+            (
+                subscription["end_date"].strftime("%Y-%m-%d")
+                if subscription["price"] != 0
+                else "unlimited"
+            ),
+            subscription["price"],
+        ),
     )
 
     return
@@ -321,7 +356,9 @@ def new_user_register(call: types.CallbackQuery):
         db.update_request(request_id, "request_status", "declined")
         bot.send_message(admin_id, "User declined")
 
-        bot.send_message(user["id"], "You are declined")
+        bot.send_message(
+            user["id"], get_message("you_are_declined", get_lang(call.message))
+        )
 
         return
 
@@ -342,7 +379,9 @@ def new_user_register(call: types.CallbackQuery):
         db.update_request(request_id, "request_status", "approved")
         bot.send_message(admin_id, "User default")
 
-        bot.send_message(user["id"], "You are approved")
+        bot.send_message(
+            user["id"], get_message("you_are_approved", get_lang(call.message))
+        )
 
         return
 
@@ -402,7 +441,7 @@ def new_user_register(call: types.CallbackQuery):
             ),
         )
 
-        bot.send_message(user["id"], "You are approved")
+        bot.send_message(user["id"], get_message("you_are_approved", get_lang(message)))
 
     return
 
@@ -417,7 +456,9 @@ def extend(message: types.Message):
 
     subscription = db.get_subscription(message.chat.id)
     if not subscription:
-        bot.send_message(message.chat.id, "Wait until admin will approve you")
+        bot.send_message(
+            message.chat.id, get_message("wait_for_approval", get_lang(message))
+        )
 
         return
 
@@ -437,6 +478,13 @@ def extend(message: types.Message):
     }
 
     for label, text in dict_labels.items():
+        if dict_prices[label] < 100:
+            bot.send_message(
+                message.chat.id, get_message("payment_less_than_100", get_lang(message))
+            )
+
+            continue
+
         shopping_data = {
             "receipt": {
                 "items": [
@@ -456,7 +504,7 @@ def extend(message: types.Message):
         bot.send_invoice(
             message.chat.id,
             "Krosh VPN",
-            f"Продление подписки на {text}",
+            get_message("extend_subscription", get_lang(message)).format(text),
             f"{message.chat.id}_{label}",
             provider_token,
             need_email=True,
@@ -513,7 +561,9 @@ def got_payment(message: types.Message):
 
     bot.send_message(
         message.chat.id,
-        f"You are subscribed until {end_date.strftime('%Y-%m-%d')}. Thank you!",
+        get_message("subscribed_until", get_lang(message)).format(
+            end_date.strftime("%Y-%m-%d")
+        ),
     )
 
     user = db.get_user(message.chat.id)
@@ -551,7 +601,9 @@ if __name__ == "__main__":
 
             msg = bot.send_message(
                 user["id"],
-                f"Дата окончания вашей подписки: {owe['end_date']}.",
+                get_message("subscription_end_date", "RU").format(
+                    owe["end_date"].strftime("%Y-%m-%d")
+                ),
             )
 
             extend(msg)

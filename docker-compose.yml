@@ -1,5 +1,5 @@
 services:
-  tg-keeper:
+  vpn_bot:
     build:
       context: .
       dockerfile: Dockerfile
