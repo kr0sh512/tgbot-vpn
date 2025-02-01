@@ -536,12 +536,16 @@ def got_payment(message: types.Message):
 
     if "1mnt" in message.successful_payment.invoice_payload:
         end_date += timedelta(days=31)
+        payment = message.successful_payment.total_amount / 100
     elif "3mnt" in message.successful_payment.invoice_payload:
         end_date += timedelta(days=90)
+        payment = message.successful_payment.total_amount / 100 / 3
     elif "6mnt" in message.successful_payment.invoice_payload:
         end_date += timedelta(days=180)
+        payment = message.successful_payment.total_amount / 100 / 6
     elif "1year" in message.successful_payment.invoice_payload:
         end_date += timedelta(days=365)
+        payment = message.successful_payment.total_amount / 100 / 12
     else:
         bot.send_message(
             message.chat.id,
@@ -554,7 +558,7 @@ def got_payment(message: types.Message):
         message.chat.id,
         datetime.now(),
         end_date,
-        message.successful_payment.total_amount / 100,
+        payment,
     )
 
     db.new_payments(
