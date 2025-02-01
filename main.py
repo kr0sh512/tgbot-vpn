@@ -161,10 +161,10 @@ def send_to_user(call: types.CallbackQuery):
     user = db.get_user(call.data.split("_")[1])
     bot.send_message(
         admin_id,
-        "Send message to user {} ({} {})".format(
+        "Send message to user {} ({} {})\n/exit to stop".format(
             user["nickname"], user["firstname"], user["lastname"]
         ),
-        reply_markup=types.ForceReply(),
+        # reply_markup=types.ForceReply(),
     )
 
     bot.register_next_step_handler_by_chat_id(
@@ -172,7 +172,14 @@ def send_to_user(call: types.CallbackQuery):
     )
 
     def send_to_user(message: types.Message, user_id: int):
+        if "/exit" in message.text:
+            bot.send_message(admin_id, "Canceled")
+
+            return
+
         bot.forward_message(user_id, admin_id, message.message_id)
+
+        bot.repl
 
         return
 
@@ -251,6 +258,52 @@ def admin_info(message: types.Message):
         os.rmdir("temp")
     except Exception as e:
         print(f"Error deleting temporary files: {e}")
+
+    return
+
+
+@bot.message_handler(commands=["change"])
+def change_user_data(message: types.Message):
+    if message.chat.id != admin_id:
+
+        return
+
+    users = db.get_users()
+    reply_markup = types.InlineKeyboardMarkup()
+    for user in users:
+        reply_markup.add(
+            types.InlineKeyboardButton(
+                f"{user['nickname']} {user['firstname']} {user['lastname']}",
+                callback_data=f"change_{user['id']}",
+            )
+        )
+
+    bot.send_message(
+        admin_id,
+        "Choose user to change data",
+        reply_markup=reply_markup,
+    )
+
+    return
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("change_"))
+def change_user_data_call(call: types.CallbackQuery):
+    user = db.get_user(call.data.split("_")[1])
+    subscription = db.get_subscription(user["id"])
+
+    bot.send_message(
+        admin_id,
+        f"Old data for user {user['nickname']} ({user['id']}):\n\
+            \nFirstname: {user['firstname']}\
+            \nLastname: {user['lastname']}\
+            \nPhone: {user['phone']}\
+            \nUsername: {user['username']}\
+            \nSubscription: {subscription['end_date'].strftime('%Y-%m-%d') if subscription['price'] != 0 else 'unlimited'}\
+            \nPrice: {subscription['price']}",
+    )
+
+    db.new_request(user["id"], "new", f"change_user {user['id']}")
 
     return
 
@@ -370,8 +423,18 @@ def extend(message: types.Message):
 
     price = int(subscription["price"])
 
-    dict_labels = {"1mnt": "1 месяц", "6mnt": "6 месяцев", "1year": "1 год"}
-    dict_prices = {"1mnt": price, "6mnt": price * 6, "1year": price * 12}
+    dict_labels = {
+        "1mnt": "1 месяц",
+        "3mnt": "3 месяца",
+        "6mnt": "6 месяцев",
+        "1year": "1 год",
+    }
+    dict_prices = {
+        "1mnt": price,
+        "3mnt": price * 3,
+        "6mnt": price * 6,
+        "1year": price * 12,
+    }
 
     for label, text in dict_labels.items():
         shopping_data = {
@@ -427,6 +490,8 @@ def got_payment(message: types.Message):
 
     if "1mnt" in message.successful_payment.invoice_payload:
         end_date += timedelta(days=31)
+    elif "3mnt" in message.successful_payment.invoice_payload:
+        end_date += timedelta(days=90)
     elif "6mnt" in message.successful_payment.invoice_payload:
         end_date += timedelta(days=180)
     elif "1year" in message.successful_payment.invoice_payload:
@@ -464,8 +529,6 @@ def got_payment(message: types.Message):
 if __name__ == "__main__":
     print("-------------------------")
 
-    # bot.infinity_polling(restart_on_change=True)
-
     threading.Thread(
         target=bot.infinity_polling,
         name="bot_infinity_polling",
@@ -488,7 +551,7 @@ if __name__ == "__main__":
 
             msg = bot.send_message(
                 user["id"],
-                f"Ваша подписка истекает {owe['end_date']}.",
+                f"Дата окончания вашей подписки: {owe['end_date']}.",
             )
 
             extend(msg)
@@ -498,7 +561,9 @@ if __name__ == "__main__":
         list_requests = db.get_requests()
 
         for request in list_requests:
-            if request["request_data"].startswith("new_user"):
+            if request["request_data"].startswith("new_user") or request[
+                "request_data"
+            ].startswith("change_user"):
                 markup = types.InlineKeyboardMarkup()
                 markup.add(
                     types.InlineKeyboardButton(
@@ -516,7 +581,7 @@ if __name__ == "__main__":
 
                 bot.send_message(
                     admin_id,
-                    f"New user:\
+                    f"{'New user' if 'new' in request['request_data'] else 'Change user'}:\
                     \nUser: {user['firstname']} {user['lastname']}\
                     \nPhone: {user['phone']}\
                     \nUsername: {user['username']}",
