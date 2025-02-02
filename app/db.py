@@ -209,7 +209,7 @@ def get_owe():
     conn = db.getconn()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM subscriptions WHERE end_date < NOW() + INTERVAL '3 days' AND price != 0"
+        "SELECT * FROM subscriptions WHERE end_date < NOW() + INTERVAL '3 days' AND price != 0 ORDER BY created_at DESC LIMIT 1"
     )
     rows = cursor.fetchall()
     db.putconn(conn)

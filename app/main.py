@@ -91,6 +91,20 @@ def contact(message: types.Message):
 
         return
 
+    if message.contact.user_id != message.from_user.id and message.chat.id != admin_id:
+        keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        reg_button = types.KeyboardButton(
+            text="Share contact for registration.", request_contact=True
+        )
+        keyboard.add(reg_button)
+        bot.send_message(
+            message.chat.id,
+            get_message("send_contact", get_lang(message)),
+            reply_markup=keyboard,
+        )
+
+        return
+
     if not message.contact:
         bot.send_message(
             message.chat.id, get_message("empty_contact", get_lang(message))
@@ -99,10 +113,14 @@ def contact(message: types.Message):
         return
 
     db.new_user(
-        message.chat.id,
-        message.from_user.username,
-        message.from_user.first_name,
-        message.from_user.last_name,
+        message.contact.user_id,
+        (
+            message.from_user.username
+            if message.contact.user_id == message.from_user.id
+            else None
+        ),
+        message.contact.first_name,
+        message.contact.last_name,
         message.contact.phone_number,
     )
 
@@ -381,6 +399,8 @@ def new_user_register(call: types.CallbackQuery):
             user["id"], get_message("you_are_approved", get_lang(call.message))
         )
 
+        info(call.message)
+
         return
 
     bot.send_message(
@@ -439,7 +459,11 @@ def new_user_register(call: types.CallbackQuery):
             ),
         )
 
-        bot.send_message(user["id"], get_message("you_are_approved", get_lang(message)))
+        msg = bot.send_message(
+            user["id"], get_message("you_are_approved", get_lang(message))
+        )
+
+        info(msg)
 
     return
 
@@ -605,7 +629,7 @@ if __name__ == "__main__":
                 user["last_notification"]
                 and (datetime.now() - user["last_notification"]).total_seconds()
                 < 24 * 60 * 60
-            ):
+            ) or owe["price"] == 0:
                 continue
 
             msg = bot.send_message(
