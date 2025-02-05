@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from telebot import types
 from typing import Any
 import psycopg2
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -205,16 +206,34 @@ def get_requests(request_status="new", request_id=None) -> list[dict]:
     return into_list(rows, cursor.description)
 
 
-def get_owe():
-    conn = db.getconn()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM subscriptions WHERE end_date < NOW() + INTERVAL '3 days' AND price != 0 ORDER BY created_at DESC LIMIT 1"
-    )
-    rows = cursor.fetchall()
-    db.putconn(conn)
+# def old_get_owe():
+#     conn = db.getconn()
+#     cursor = conn.cursor()
+#     cursor.execute(
+#         "SELECT * FROM subscriptions WHERE price != 0 ORDER BY created_at DESC LIMIT 1"
+#     )
+#     subscription = cursor.fetchone()
+#     if subscription and subscription["end_date"] < (datetime.now() + timedelta(days=3)):
+#         cursor.execute(
+#             "SELECT * FROM subscriptions WHERE end_date < NOW() + INTERVAL '3 days' AND price != 0 ORDER BY created_at DESC LIMIT 1"
+#         )
+#     rows = cursor.fetchall()
+#     db.putconn(conn)
 
-    return into_list(rows, cursor.description)
+#     return into_list(rows, cursor.description)
+
+
+def get_owe():
+    users = get_users()
+    owe = []
+    for user in users:
+        subscription = get_subscription(user["id"])
+        if subscription and subscription["end_date"] < (
+            datetime.now() + timedelta(days=3)
+        ):
+            owe.append(subscription)
+
+    return owe
 
 
 def get_users():
